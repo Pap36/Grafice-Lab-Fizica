@@ -2,6 +2,7 @@
   "templates": [
     {
       "name": "Axe paralele-torsiune",
+      "plot_mode": "fit",
       "excel_path": "Axe paralele/c_torsiune.xlsx",
       "x_col_index": 5,
       "y_col_index": 4,
@@ -25,6 +26,7 @@
     },
     {
       "name": "Axe paralele-Moment de inertie",
+      "plot_mode": "fit",
       "excel_path": "Axe paralele/axe_paralele.xlsx",
       "x_col_index": 5,
       "y_col_index": 4,
@@ -48,6 +50,7 @@
     },
     {
       "name": "Dinamica torsiunii",
+      "plot_mode": "fit",
       "excel_path": "Dinamica torsiunii/dinamica_torsiunii.xlsx",
       "x_col_index": 2,
       "y_col_index": 4,
@@ -67,6 +70,39 @@
       "intercept_precision": 2,
       "intercept_exponent": 0,
       "intercept_unit": "\\frac{kg \\cdot m^2}{s^2}",
+      "stats_pos": "bottom-right"
+    }
+    ,
+    {
+      "name": "Pendulul Mach",
+      "plot_mode": "lines",
+      "excel_path": "Pendulul Mach/pendulul_mach.xlsx",
+      "x_label": "\\beta",
+      "y_label": "T'",
+      "x_unit": "",
+      "y_unit": "s",
+      "x_exponent": 0,
+      "y_exponent": 0,
+      "series": [
+        {
+          "label": "T' măsurat",
+          "x_col_index": 0,
+          "y_col_index": 1,
+          "color": "#1f77b4",
+          "linestyle": "-",
+          "marker": "o",
+          "linewidth": 1.0
+        },
+        {
+          "label": "T' teoretic",
+          "x_col_index": 0,
+          "y_col_index": 5,
+          "color": "#d62728",
+          "linestyle": "-",
+          "marker": "s",
+          "linewidth": 1.0
+        }
+      ],
       "stats_pos": "bottom-right"
     }
   ]

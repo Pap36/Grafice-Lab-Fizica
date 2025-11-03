@@ -100,3 +100,30 @@ Tips:
 - Column indices are validated at runtime; if they’re out of range for the selected sheet, you’ll be prompted to adjust.
 - LaTeX in labels works with Matplotlib’s mathtext (no TeX installation required). Use double backslashes in JSON strings.
 
+## Multi-series and plot modes
+
+- `plot_mode`: controls how data are drawn.
+	- `fit`: scatter points and draw a linear regression line (one per series). Printed fits per series; on-plot annotation appears only when there is a single series.
+	- `lines`: connect points in data order using a line with markers (no regression).
+- `series`: array of datasets to plot on the same axes. Each item supports:
+	- `x_col_index`, `y_col_index` (required): zero-based column indices from the Excel sheet.
+	- `label` (shown in legend), `color`, `linestyle`, `marker`, `linewidth` (optional styling).
+
+Example: two series, connect points, show legend
+
+```json
+{
+	"name": "Dinamica torsiunii – T' vs beta (masurat vs teoretic)",
+	"plot_mode": "lines",
+	"excel_path": "Dinamica torsiunii/dinamica_torsiunii.xlsx",
+	"x_label": "cos\\,\\beta",
+	"y_label": "T'",
+	"x_exponent": 0,
+	"y_exponent": 0,
+	"series": [
+		{ "label": "T' măsurat",  "x_col_index": 2, "y_col_index": 0, "marker": "o" },
+		{ "label": "T' teoretic", "x_col_index": 2, "y_col_index": 4, "marker": "s" }
+	]
+}
+```
+
