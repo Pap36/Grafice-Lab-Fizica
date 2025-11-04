@@ -204,8 +204,11 @@ def main():
             if not (0 <= sx < len(df.columns) and 0 <= sy < len(df.columns)):
                 print(f"ERROR: series[{k}] column index out of range.")
                 sys.exit(1)
-            xv = pd.to_numeric(df.iloc[:, sx], errors="coerce").to_numpy()
-            yv = pd.to_numeric(df.iloc[:, sy], errors="coerce").to_numpy()
+            row_start = s.get("row_start")
+            row_end = s.get("row_end")
+            sel = slice(row_start, row_end) if (row_start is not None or row_end is not None) else slice(None)
+            xv = pd.to_numeric(df.iloc[sel, sx], errors="coerce").to_numpy()
+            yv = pd.to_numeric(df.iloc[sel, sy], errors="coerce").to_numpy()
             mask = np.isfinite(xv) & np.isfinite(yv)
             xv, yv = xv[mask], yv[mask]
             if len(xv) < 2:
@@ -223,7 +226,45 @@ def main():
                 "linewidth": float(s.get("linewidth", 2.0)),
             })
 
-    # (Fit is computed later per-series only when plot_mode == 'fit')
+    # (Fit is computed later per-series only when plot_mode == 'fit' or when explicit fits are provided)
+
+    # ---- Optional explicit fits (can co-exist with series) ----
+    fits_cfg = tmpl.get("fits") if used_template else None
+    fits_list = []
+
+    def extract_xy(col_x: int, col_y: int, row_start=None, row_end=None):
+        sel = slice(row_start, row_end) if (row_start is not None or row_end is not None) else slice(None)
+        xv = pd.to_numeric(df.iloc[sel, col_x], errors="coerce").to_numpy()
+        yv = pd.to_numeric(df.iloc[sel, col_y], errors="coerce").to_numpy()
+        mask = np.isfinite(xv) & np.isfinite(yv)
+        return xv[mask], yv[mask]
+
+    if isinstance(fits_cfg, list):
+        for k, f in enumerate(fits_cfg, start=1):
+            try:
+                fx = int(f.get("x_col_index"))
+                fy = int(f.get("y_col_index"))
+            except Exception:
+                print("ERROR: fits definitions must include integer x_col_index and y_col_index.")
+                sys.exit(1)
+            if not (0 <= fx < len(df.columns) and 0 <= fy < len(df.columns)):
+                print(f"ERROR: fits[{k}] column index out of range.")
+                sys.exit(1)
+            xv, yv = extract_xy(fx, fy, row_start=f.get("row_start"), row_end=f.get("row_end"))
+            if len(xv) < 2:
+                print(f"ERROR: fits[{k}] needs at least two valid numeric pairs.")
+                sys.exit(1)
+            fits_list.append({
+                "label": f.get("label") or f"Fit {k}",
+                "x": xv,
+                "y": yv,
+                "x_idx": fx,
+                "y_idx": fy,
+                "color": f.get("color"),
+                "linestyle": f.get("linestyle", "--"),
+                "linewidth": float(f.get("linewidth", 2.0)),
+                "scatter": bool(f.get("scatter", False)),
+            })
 
     # ---- Labels, units, options ----
     # For multi-series, use common labels from template or fallback to first series' column names
@@ -254,31 +295,61 @@ def main():
     # ---- Plot ----
     fig, ax = plt.subplots(figsize=(7, 5))
     plot_mode = (tmpl.get("plot_mode") or "fit").strip().lower()
-
     last_fit = None  # store last (m, b, x, y) for single-series annotation
-
     if plot_mode not in {"fit", "lines"}:
         print("Warning: unknown plot_mode; defaulting to 'fit'.")
         plot_mode = "fit"
 
+    # Determine global x-range to extend fit lines
+    all_x_values = []
     for s in series_list:
-        xv, yv = s["x"], s["y"]
-        label = s["label"]
-        color = s["color"]
-        ls = s["linestyle"]
-        marker = s["marker"]
-        lw = s["linewidth"]
+        all_x_values.append(s["x"])
+    for f in fits_list:
+        all_x_values.append(f["x"])
+    global_xmin = min((np.min(a) for a in all_x_values), default=None)
+    global_xmax = max((np.max(a) for a in all_x_values), default=None)
 
-        if plot_mode == "fit":
-            m, b = np.polyfit(xv, yv, 1)
-            x_line = np.linspace(np.min(xv), np.max(xv), 200)
-            y_line = m * x_line + b
-            ax.scatter(xv, yv, s=30, color=color, label=None)
-            ax.plot(x_line, y_line, linewidth=lw, linestyle=ls, color=color, label=label)
-            last_fit = (m, b, xv, yv, label)
+    # If there are explicit fits, always draw series as lines/markers
+    if fits_list:
+        for s in series_list:
+            ax.plot(s["x"], s["y"], linestyle=s["linestyle"], marker=s["marker"],
+                    linewidth=s["linewidth"], color=s["color"], label=s["label"])
+    else:
+        # Back-compat behavior when explicit fits not provided
+        for s in series_list:
+            xv, yv = s["x"], s["y"]
+            label = s["label"]
+            color = s["color"]
+            ls = s["linestyle"]
+            marker = s["marker"]
+            lw = s["linewidth"]
+            if plot_mode == "fit":
+                m, b = np.polyfit(xv, yv, 1)
+                x_line = np.linspace(np.min(xv), np.max(xv), 200)
+                y_line = m * x_line + b
+                ax.scatter(xv, yv, s=30, color=color, label=None)
+                ax.plot(x_line, y_line, linewidth=lw, linestyle=ls, color=color, label=label)
+                last_fit = (m, b, xv, yv, label)
+            else:
+                ax.plot(xv, yv, linestyle=ls, marker=marker, linewidth=lw, color=color, label=label)
+
+    # Draw explicit fits and extend lines across global x-range
+    for f in fits_list:
+        xv, yv = f["x"], f["y"]
+        label = f["label"]
+        color = f["color"]
+        ls = f["linestyle"]
+        lw = f["linewidth"]
+        m, b = np.polyfit(xv, yv, 1)
+        if global_xmin is not None and global_xmax is not None and global_xmax > global_xmin:
+            x_line = np.linspace(global_xmin, global_xmax, 400)
         else:
-            # Connect points in given order
-            ax.plot(xv, yv, linestyle=ls, marker=marker, linewidth=lw, color=color, label=label)
+            x_line = np.linspace(np.min(xv), np.max(xv), 200)
+        y_line = m * x_line + b
+        if f.get("scatter"):
+            ax.scatter(xv, yv, s=30, color=color, label=None)
+        ax.plot(x_line, y_line, linewidth=lw, linestyle=ls, color=color, label=label)
+        last_fit = (m, b, xv, yv, label)
 
     def make_div_formatter(divisor: float):
         if divisor == 0 or divisor == 1:
@@ -339,30 +410,32 @@ def main():
                       linewidth=0.8, alpha=0.95)
         )
 
-    # legend when multiple labeled series
-    if len(series_list) > 1 or (series_list and series_list[0].get("label")):
-        ax.legend()
+    # legend when multiple labeled items or any explicit labels
+    if True:
+        handles, labels = ax.get_legend_handles_labels()
+        if labels:
+            ax.legend()
 
     plt.tight_layout()
     out_path = path.with_name(f"{path.stem}_fit.png")
     plt.savefig(out_path, dpi=150)
-    if plot_mode == "fit" and len(series_list) == 1 and last_fit is not None:
+    if plot_mode == "fit" and len(series_list) == 1 and last_fit is not None and not fits_list:
         m, b, xv, yv, label = last_fit
         y_fit = m * xv + b
         ss_res = np.sum((yv - y_fit) ** 2)
         ss_tot = np.sum((yv - np.mean(yv)) ** 2)
         r2 = 1 - ss_res / ss_tot if ss_tot > 0 else float("nan")
         print(f"\nFit: y = {m:.6f} * x + {b:.6f}  (R^2 = {r2:.6f})")
-    elif plot_mode == "fit" and len(series_list) > 1:
-        print("\nFits (one per series):")
-        for s in series_list:
-            xv, yv = s["x"], s["y"]
+    elif fits_list:
+        print("\nFits (one per defined fit):")
+        for f in fits_list:
+            xv, yv = f["x"], f["y"]
             m, b = np.polyfit(xv, yv, 1)
             y_fit = m * xv + b
             ss_res = np.sum((yv - y_fit) ** 2)
             ss_tot = np.sum((yv - np.mean(yv)) ** 2)
             r2 = 1 - ss_res / ss_tot if ss_tot > 0 else float("nan")
-            print(f"  - {s['label']}: y = {m:.6f} * x + {b:.6f}  (R^2 = {r2:.6f})")
+            print(f"  - {f['label']}: y = {m:.6f} * x + {b:.6f}  (R^2 = {r2:.6f})")
     print(f"Plot saved to: {out_path.resolve()}\n")
     plt.show()
 
