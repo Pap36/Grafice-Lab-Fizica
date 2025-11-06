@@ -291,6 +291,11 @@ def main():
     show_slope = bool(tmpl.get("show_slope", True))
     show_intercept = bool(tmpl.get("show_intercept", True))
     pos = (tmpl.get("stats_pos") or "bottom-right").lower()
+    # Axis lower-bound controls
+    x_allow_negative = bool(tmpl.get("x_allow_negative", True))
+    y_allow_negative = bool(tmpl.get("y_allow_negative", True))
+    x_start_at_zero = bool(tmpl.get("x_start_at_zero", False))
+    y_start_at_zero = bool(tmpl.get("y_start_at_zero", False))
 
     # ---- Plot ----
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -409,6 +414,20 @@ def main():
                       facecolor="white", edgecolor="black",
                       linewidth=0.8, alpha=0.95)
         )
+
+    # Apply axis lower bounds if requested
+    if (not x_allow_negative) or x_start_at_zero:
+        try:
+            left, right = ax.get_xlim()
+            ax.set_xlim(left=0, right=right)
+        except Exception:
+            ax.set_xlim(left=0)
+    if (not y_allow_negative) or y_start_at_zero:
+        try:
+            bottom, top = ax.get_ylim()
+            ax.set_ylim(bottom=0, top=top)
+        except Exception:
+            ax.set_ylim(bottom=0)
 
     # legend when multiple labeled items or any explicit labels
     if True:

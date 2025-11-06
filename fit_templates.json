@@ -79,7 +79,7 @@
       "excel_path": "Pendulul Mach/pendulul_mach.xlsx",
       "x_label": "\\beta",
       "y_label": "T'",
-      "x_unit": "",
+        "x_unit": "°",
       "y_unit": "s",
       "x_exponent": 0,
       "y_exponent": 0,
@@ -111,10 +111,11 @@
       "excel_path": "Calo/calo.xlsx",
       "x_col_index": 0,
       "y_col_index": 1,
+      "x_start_at_zero": true,
       "x_label": "\\tau",
       "y_label": "t",
       "x_unit": "s",
-      "y_unit": "\\circ",
+      "y_unit": "°",
       "x_exponent": 0,
       "y_exponent": 0,
       "show_slope": false,
@@ -126,7 +127,7 @@
       "intercept_label": "t_c",
       "intercept_precision": 2,
       "intercept_exponent": 0,
-      "intercept_unit": "\\circ",
+      "intercept_unit": "°",
       "series": [
         {
           "label": "Măsurat",
@@ -142,18 +143,18 @@
       ],
       "fits": [
         {
-          "label": "Fit regiune liniară",
+          "label": "Rata de răcire",
           "x_col_index": 0,
           "y_col_index": 1,
           "row_start": 3,
           "row_end": null,
-          "color": "#1f77b4",
+          "color": "#d62728",
           "linestyle": "--",
           "linewidth": 2.0,
           "scatter": false
         }
       ],
-      "stats_pos": "bottom-left"
+      "stats_pos": "bottom-right"
     },
     {
       "name": "Calo-lines",
@@ -164,7 +165,7 @@
       "x_label": "\\tau",
       "y_label": "t",
       "x_unit": "s",
-      "y_unit": "\\circ",
+      "y_unit": "°",
       "x_exponent": 0,
       "y_exponent": 0,
       "show_slope": false,
@@ -176,7 +177,7 @@
       "intercept_label": "t_c",
       "intercept_precision": 2,
       "intercept_exponent": 0,
-      "intercept_unit": "\\circ",
+      "intercept_unit": "°",
       "stats_pos": "bottom-left"
     },
     {
@@ -188,7 +189,7 @@
       "x_label": "\\tau",
       "y_label": "t",
       "x_unit": "s",
-      "y_unit": "\\circ",
+      "y_unit": "°",
       "x_exponent": 0,
       "y_exponent": 0,
       "show_slope": false,
@@ -200,7 +201,7 @@
       "intercept_label": "t_c",
       "intercept_precision": 2,
       "intercept_exponent": 0,
-      "intercept_unit": "\\circ",
+      "intercept_unit": "°",
       "stats_pos": "bottom-left"
     }
   ]
