@@ -63,13 +63,13 @@
       "show_slope": true,
       "slope_label": "\\frac{8 \\pi^2 m_c}{C}",
       "slope_precision": 2,
-      "slope_unit": "\\frac{m^2}{s^2}",
+      "slope_unit": "\\frac{s^2}{m^2}",
       "slope_exponent": 0,
       "show_intercept": true,
       "intercept_label": "\\frac{4 \\pi^2 (I_b + 2I_c)}{C}",
       "intercept_precision": 2,
       "intercept_exponent": 0,
-      "intercept_unit": "\\frac{kg \\cdot m^2}{s^2}",
+      "intercept_unit": "s^2",
       "stats_pos": "bottom-right"
     }
     ,
