@@ -313,12 +313,21 @@ def main():
         all_x_values.append(f["x"])
     global_xmin = min((np.min(a) for a in all_x_values), default=None)
     global_xmax = max((np.max(a) for a in all_x_values), default=None)
+    # If axis requested to start at zero, extend global range to include 0 for fit line drawing
+    if x_start_at_zero and global_xmin is not None and global_xmin > 0:
+        global_xmin = 0.0
 
     # If there are explicit fits, always draw series as lines/markers
     if fits_list:
         for s in series_list:
-            ax.plot(s["x"], s["y"], linestyle=s["linestyle"], marker=s["marker"],
-                    linewidth=s["linewidth"], color=s["color"], label=s["label"])
+            base_label = s["label"]
+            if used_template and tmpl.get("hide_base_series_legend", False):
+                base_label = None
+            if used_template and tmpl.get("series_scatter_only", False):
+                ax.scatter(s["x"], s["y"], s=30, color=s["color"], marker=s["marker"], label=base_label)
+            else:
+                ax.plot(s["x"], s["y"], linestyle=s["linestyle"], marker=s["marker"],
+                        linewidth=s["linewidth"], color=s["color"], label=base_label)
     else:
         # Back-compat behavior when explicit fits not provided
         for s in series_list:
