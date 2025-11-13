@@ -314,7 +314,7 @@
           "scatter": true
         }, 
         {
-          "label": "Izoterm 60 C",
+          "label": "Izoterm 55.6 C",
           "x_col_index": 10,
           "y_col_index": 8,
           "row_start": 0,
