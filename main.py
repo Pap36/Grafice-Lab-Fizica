@@ -119,100 +119,172 @@ def main():
             else:
                 print("Template index out of range. Continuing without.")
 
-    # ---- Select Excel file (template may have provided a path) ----
+    # ---- Select Excel file(s) (template may have provided a path or per-series files) ----
     path = None
-    if used_template and tmpl.get("excel_path"):
-        candidate = Path(tmpl.get("excel_path"))
-        if candidate.exists():
-            path = candidate
-            print(f"\nUsing Excel file from template: {path}")
+    # detect multi-file template usage: any series or fit declares its own excel_path, or template provides multi_files
+    multi_file_mode = False
+    if used_template:
+        if tmpl.get("multi_files"):
+            multi_file_mode = True
         else:
-            print(f"\nWarning: template specifies excel_path '{candidate}', but that file was not found.\nFalling back to manual file selection.")
+            series_cfg_tmp = tmpl.get("series")
+            fits_cfg_tmp = tmpl.get("fits")
+            if isinstance(series_cfg_tmp, list):
+                for s in series_cfg_tmp:
+                    if s.get("excel_path"):
+                        multi_file_mode = True
+                        break
+            if not multi_file_mode and isinstance(fits_cfg_tmp, list):
+                for f in fits_cfg_tmp:
+                    if f.get("excel_path"):
+                        multi_file_mode = True
+                        break
 
-    if path is None:
-        excel_files = sorted(Path(".").glob("*.xls*"))
-        if not excel_files:
-            print("No Excel files (.xls/.xlsx) found here."); sys.exit(1)
+    if not multi_file_mode:
+        if used_template and tmpl.get("excel_path"):
+            candidate = Path(tmpl.get("excel_path"))
+            if candidate.exists():
+                path = candidate
+                print(f"\nUsing Excel file from template: {path}")
+            else:
+                print(f"\nWarning: template specifies excel_path '{candidate}', but that file was not found.\nFalling back to manual file selection.")
 
-        print("Available Excel files:")
-        for i, f in enumerate(excel_files):
-            print(f"  [{i}] {f.name}")
-        file_idx = ask_int("\nSelect file index", 0)
-        if not (0 <= file_idx < len(excel_files)):
-            print("ERROR: index out of range."); sys.exit(1)
-        path = excel_files[file_idx]
-        print(f"\nReading: {path.name}")
+        if path is None:
+            excel_files = sorted(Path(".").glob("*.xls*"))
+            if not excel_files:
+                print("No Excel files (.xls/.xlsx) found here."); sys.exit(1)
 
-    # ---- Read Excel ----
-    try:
-        df = pd.read_excel(path)
-    except Exception as e:
-        print(f"ERROR reading Excel: {e}"); sys.exit(1)
-    if df.empty:
-        print("ERROR: sheet is empty."); sys.exit(1)
+            print("Available Excel files:")
+            for i, f in enumerate(excel_files):
+                print(f"  [{i}] {f.name}")
+            file_idx = ask_int("\nSelect file index", 0)
+            if not (0 <= file_idx < len(excel_files)):
+                print("ERROR: index out of range."); sys.exit(1)
+            path = excel_files[file_idx]
+            print(f"\nReading: {path.name}")
+
+        # ---- Read single Excel ----
+        try:
+            df = pd.read_excel(path)
+        except Exception as e:
+            print(f"ERROR reading Excel: {e}"); sys.exit(1)
+        if df.empty:
+            print("ERROR: sheet is empty."); sys.exit(1)
+    else:
+        # multi-file mode: we'll load per-series / per-fit files as needed
+        print("Template requests multiple Excel files; files will be read per-series or per-fit.")
 
     # ---- Columns / Series selection ----
-    print("\nColumns (0-based):")
-    for i, col in enumerate(df.columns):
-        print(f"  {i}: {col}")
-
     series_cfg = tmpl.get("series") if used_template else None
     multi_series = isinstance(series_cfg, list) and len(series_cfg) > 0
 
-    if not multi_series:
-        # Single-series path (backward compatible)
-        if used_template:
-            x_idx = int(tmpl.get("x_col_index"))
-            y_idx = int(tmpl.get("y_col_index"))
-            print(f"Using template column indices: X={x_idx}, Y={y_idx}")
+    # If we are in single-file mode, show columns and let existing flow work
+    if not multi_file_mode:
+        print("\nColumns (0-based):")
+        for i, col in enumerate(df.columns):
+            print(f"  {i}: {col}")
+
+        if not multi_series:
+            # Single-series path (backward compatible)
+            if used_template:
+                x_idx = int(tmpl.get("x_col_index"))
+                y_idx = int(tmpl.get("y_col_index"))
+                print(f"Using template column indices: X={x_idx}, Y={y_idx}")
+            else:
+                x_idx = ask_int("Index for X column", tmpl.get("x_col_index"))
+                y_idx = ask_int("Index for Y column", tmpl.get("y_col_index"))
+
+            if not (0 <= x_idx < len(df.columns) and 0 <= y_idx < len(df.columns)):
+                print("ERROR: column index out of range."); sys.exit(1)
+
+            x = pd.to_numeric(df.iloc[:, x_idx], errors="coerce").to_numpy()
+            y = pd.to_numeric(df.iloc[:, y_idx], errors="coerce").to_numpy()
+            mask = np.isfinite(x) & np.isfinite(y)
+            x, y = x[mask], y[mask]
+            if len(x) < 2:
+                print("ERROR: need at least two valid numeric pairs."); sys.exit(1)
+            series_list = [
+                {
+                    "label": tmpl.get("series_label") or tmpl.get("name") or "Series 1",
+                    "x": x,
+                    "y": y,
+                    "x_idx": x_idx,
+                    "y_idx": y_idx,
+                    "color": None,
+                    "linestyle": "-",
+                    "marker": "o",
+                    "linewidth": 2.0,
+                }
+            ]
         else:
-            x_idx = ask_int("Index for X column", tmpl.get("x_col_index"))
-            y_idx = ask_int("Index for Y column", tmpl.get("y_col_index"))
-
-        if not (0 <= x_idx < len(df.columns) and 0 <= y_idx < len(df.columns)):
-            print("ERROR: column index out of range."); sys.exit(1)
-
-        x = pd.to_numeric(df.iloc[:, x_idx], errors="coerce").to_numpy()
-        y = pd.to_numeric(df.iloc[:, y_idx], errors="coerce").to_numpy()
-        mask = np.isfinite(x) & np.isfinite(y)
-        x, y = x[mask], y[mask]
-        if len(x) < 2:
-            print("ERROR: need at least two valid numeric pairs."); sys.exit(1)
-        series_list = [
-            {
-                "label": tmpl.get("series_label") or tmpl.get("name") or "Series 1",
-                "x": x,
-                "y": y,
-                "x_idx": x_idx,
-                "y_idx": y_idx,
-                "color": None,
-                "linestyle": "-",
-                "marker": "o",
-                "linewidth": 2.0,
-            }
-        ]
+            # Multi-series from template (single-file)
+            print("\nColumns (0-based):")
+            for i, col in enumerate(df.columns):
+                print(f"  {i}: {col}")
+            series_list = []
+            for k, s in enumerate(series_cfg, start=1):
+                try:
+                    sx = int(s.get("x_col_index"))
+                    sy = int(s.get("y_col_index"))
+                except Exception:
+                    print("ERROR: series definitions must include integer x_col_index and y_col_index.")
+                    sys.exit(1)
+                if not (0 <= sx < len(df.columns) and 0 <= sy < len(df.columns)):
+                    print(f"ERROR: series[{k}] column index out of range.")
+                    sys.exit(1)
+                row_start = s.get("row_start")
+                row_end = s.get("row_end")
+                sel = slice(row_start, row_end) if (row_start is not None or row_end is not None) else slice(None)
+                xv = pd.to_numeric(df.iloc[sel, sx], errors="coerce").to_numpy()
+                yv = pd.to_numeric(df.iloc[sel, sy], errors="coerce").to_numpy()
+                mask = np.isfinite(xv) & np.isfinite(yv)
+                xv, yv = xv[mask], yv[mask]
+                if len(xv) < 2:
+                    print(f"ERROR: series[{k}] needs at least two valid numeric pairs.")
+                    sys.exit(1)
+                series_list.append({
+                    "label": s.get("label") or f"Series {k}",
+                    "x": xv,
+                    "y": yv,
+                    "x_idx": sx,
+                    "y_idx": sy,
+                    "color": s.get("color"),
+                    "linestyle": s.get("linestyle", "-"),
+                    "marker": s.get("marker", "o"),
+                    "linewidth": float(s.get("linewidth", 2.0)),
+                })
     else:
-        # Multi-series from template
+        # Multi-file mode: read each series from its own excel file (or template-provided file path)
+        if not multi_series:
+            print("ERROR: template multi-file mode requires a 'series' list with per-series excel_path entries.")
+            sys.exit(1)
         series_list = []
         for k, s in enumerate(series_cfg, start=1):
+            excel_p = Path(s.get("excel_path") or tmpl.get("excel_path") or "")
+            if not excel_p or not excel_p.exists():
+                print(f"ERROR: series[{k}] specifies missing excel_path: {excel_p}"); sys.exit(1)
+            try:
+                df_s = pd.read_excel(excel_p)
+            except Exception as e:
+                print(f"ERROR reading Excel for series[{k}]: {e}"); sys.exit(1)
             try:
                 sx = int(s.get("x_col_index"))
                 sy = int(s.get("y_col_index"))
             except Exception:
                 print("ERROR: series definitions must include integer x_col_index and y_col_index.")
                 sys.exit(1)
-            if not (0 <= sx < len(df.columns) and 0 <= sy < len(df.columns)):
-                print(f"ERROR: series[{k}] column index out of range.")
+            if not (0 <= sx < len(df_s.columns) and 0 <= sy < len(df_s.columns)):
+                print(f"ERROR: series[{k}] column index out of range for file {excel_p}.")
                 sys.exit(1)
             row_start = s.get("row_start")
             row_end = s.get("row_end")
             sel = slice(row_start, row_end) if (row_start is not None or row_end is not None) else slice(None)
-            xv = pd.to_numeric(df.iloc[sel, sx], errors="coerce").to_numpy()
-            yv = pd.to_numeric(df.iloc[sel, sy], errors="coerce").to_numpy()
+            xv = pd.to_numeric(df_s.iloc[sel, sx], errors="coerce").to_numpy()
+            yv = pd.to_numeric(df_s.iloc[sel, sy], errors="coerce").to_numpy()
             mask = np.isfinite(xv) & np.isfinite(yv)
             xv, yv = xv[mask], yv[mask]
             if len(xv) < 2:
-                print(f"ERROR: series[{k}] needs at least two valid numeric pairs.")
+                print(f"ERROR: series[{k}] in file {excel_p} needs at least two valid numeric pairs.")
                 sys.exit(1)
             series_list.append({
                 "label": s.get("label") or f"Series {k}",
@@ -224,6 +296,7 @@ def main():
                 "linestyle": s.get("linestyle", "-"),
                 "marker": s.get("marker", "o"),
                 "linewidth": float(s.get("linewidth", 2.0)),
+                "source_file": str(excel_p)
             })
 
     # (Fit is computed later per-series only when plot_mode == 'fit' or when explicit fits are provided)
@@ -232,12 +305,21 @@ def main():
     fits_cfg = tmpl.get("fits") if used_template else None
     fits_list = []
 
-    def extract_xy(col_x: int, col_y: int, row_start=None, row_end=None):
+    def extract_xy_from_df(gdf, col_x: int, col_y: int, row_start=None, row_end=None):
         sel = slice(row_start, row_end) if (row_start is not None or row_end is not None) else slice(None)
-        xv = pd.to_numeric(df.iloc[sel, col_x], errors="coerce").to_numpy()
-        yv = pd.to_numeric(df.iloc[sel, col_y], errors="coerce").to_numpy()
+        xv = pd.to_numeric(gdf.iloc[sel, col_x], errors="coerce").to_numpy()
+        yv = pd.to_numeric(gdf.iloc[sel, col_y], errors="coerce").to_numpy()
         mask = np.isfinite(xv) & np.isfinite(yv)
         return xv[mask], yv[mask]
+
+    def linear_fit(xv, yv, *, force_origin: bool = False):
+        if force_origin:
+            denom = np.sum(xv * xv)
+            if denom == 0:
+                print("ERROR: cannot enforce origin fit when all X values are zero."); sys.exit(1)
+            slope = float(np.sum(xv * yv) / denom)
+            return slope, 0.0
+        return np.polyfit(xv, yv, 1)
 
     if isinstance(fits_cfg, list):
         for k, f in enumerate(fits_cfg, start=1):
@@ -247,10 +329,24 @@ def main():
             except Exception:
                 print("ERROR: fits definitions must include integer x_col_index and y_col_index.")
                 sys.exit(1)
-            if not (0 <= fx < len(df.columns) and 0 <= fy < len(df.columns)):
-                print(f"ERROR: fits[{k}] column index out of range.")
-                sys.exit(1)
-            xv, yv = extract_xy(fx, fy, row_start=f.get("row_start"), row_end=f.get("row_end"))
+            # for multi-file fits, allow per-fit excel_path
+            if not multi_file_mode:
+                if not (0 <= fx < len(df.columns) and 0 <= fy < len(df.columns)):
+                    print(f"ERROR: fits[{k}] column index out of range.")
+                    sys.exit(1)
+                xv, yv = extract_xy_from_df(df, fx, fy, row_start=f.get("row_start"), row_end=f.get("row_end"))
+            else:
+                excel_p = Path(f.get("excel_path") or tmpl.get("excel_path") or "")
+                if not excel_p or not excel_p.exists():
+                    print(f"ERROR: fits[{k}] specifies missing excel_path: {excel_p}"); sys.exit(1)
+                try:
+                    df_f = pd.read_excel(excel_p)
+                except Exception as e:
+                    print(f"ERROR reading Excel for fits[{k}]: {e}"); sys.exit(1)
+                if not (0 <= fx < len(df_f.columns) and 0 <= fy < len(df_f.columns)):
+                    print(f"ERROR: fits[{k}] column index out of range for file {excel_p}.")
+                    sys.exit(1)
+                xv, yv = extract_xy_from_df(df_f, fx, fy, row_start=f.get("row_start"), row_end=f.get("row_end"))
             if len(xv) < 2:
                 print(f"ERROR: fits[{k}] needs at least two valid numeric pairs.")
                 sys.exit(1)
@@ -268,14 +364,18 @@ def main():
 
     # ---- Labels, units, options ----
     # For multi-series, use common labels from template or fallback to first series' column names
+    # Determine axis labels: prefer explicit template labels, else fall back to first series label
     if not multi_series:
-        x_label_in = tmpl.get("x_label", str(df.columns[series_list[0]["x_idx"]]))
-        y_label_in = tmpl.get("y_label", str(df.columns[series_list[0]["y_idx"]]))
+        if not multi_file_mode:
+            x_label_in = tmpl.get("x_label", str(df.columns[series_list[0]["x_idx"]]))
+            y_label_in = tmpl.get("y_label", str(df.columns[series_list[0]["y_idx"]]))
+        else:
+            x_label_in = tmpl.get("x_label", series_list[0].get("label") or "x")
+            y_label_in = tmpl.get("y_label", series_list[0].get("label") or "y")
     else:
-        defcolx = str(df.columns[series_list[0]["x_idx"]])
-        defcoly = str(df.columns[series_list[0]["y_idx"]])
-        x_label_in = tmpl.get("x_label", defcolx)
-        y_label_in = tmpl.get("y_label", defcoly)
+        # multi-series: use template-provided labels or fall back to first series label
+        x_label_in = tmpl.get("x_label", series_list[0].get("label") or "x")
+        y_label_in = tmpl.get("y_label", series_list[0].get("label") or "y")
     x_unit = tmpl.get("x_unit", "")
     y_unit = tmpl.get("y_unit", "")
     x_exp = int(tmpl.get("x_exponent", 1))
@@ -291,6 +391,7 @@ def main():
     show_slope = bool(tmpl.get("show_slope", True))
     show_intercept = bool(tmpl.get("show_intercept", True))
     pos = (tmpl.get("stats_pos") or "bottom-right").lower()
+    force_origin = bool(tmpl.get("force_through_origin"))
     # Axis lower-bound controls
     x_allow_negative = bool(tmpl.get("x_allow_negative", True))
     y_allow_negative = bool(tmpl.get("y_allow_negative", True))
@@ -338,7 +439,7 @@ def main():
             marker = s["marker"]
             lw = s["linewidth"]
             if plot_mode == "fit":
-                m, b = np.polyfit(xv, yv, 1)
+                m, b = linear_fit(xv, yv, force_origin=force_origin)
                 x_line = np.linspace(np.min(xv), np.max(xv), 200)
                 y_line = m * x_line + b
                 ax.scatter(xv, yv, s=30, color=color, label=None)
@@ -354,7 +455,7 @@ def main():
         color = f["color"]
         ls = f["linestyle"]
         lw = f["linewidth"]
-        m, b = np.polyfit(xv, yv, 1)
+        m, b = linear_fit(xv, yv, force_origin=force_origin)
         if global_xmin is not None and global_xmax is not None and global_xmax > global_xmin:
             x_line = np.linspace(global_xmin, global_xmax, 400)
         else:
@@ -445,7 +546,20 @@ def main():
             ax.legend()
 
     plt.tight_layout()
-    out_path = path.with_name(f"{path.stem}_fit.png")
+    if path is None:
+        # derive output name from template or from series source filenames
+        out_name = tmpl.get("output")
+        if not out_name:
+            parts = []
+            for s in (tmpl.get("series") or []):
+                p = s.get("excel_path") or ""
+                if p:
+                    parts.append(Path(p).stem)
+            stem = "_".join(parts) if parts else "combined"
+            out_name = f"{stem}_fit.png"
+        out_path = Path(out_name)
+    else:
+        out_path = path.with_name(f"{path.stem}_fit.png")
     plt.savefig(out_path, dpi=150)
     if plot_mode == "fit" and len(series_list) == 1 and last_fit is not None and not fits_list:
         m, b, xv, yv, label = last_fit
@@ -458,7 +572,7 @@ def main():
         print("\nFits (one per defined fit):")
         for f in fits_list:
             xv, yv = f["x"], f["y"]
-            m, b = np.polyfit(xv, yv, 1)
+            m, b = linear_fit(xv, yv, force_origin=force_origin)
             y_fit = m * xv + b
             ss_res = np.sum((yv - y_fit) ** 2)
             ss_tot = np.sum((yv - np.mean(yv)) ** 2)

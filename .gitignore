@@ -1,3 +1,9 @@
 .DS_Store
 /__pycache__
 .venv/
+caldura_molara_report.*
+*.pdf
+*.log
+*.aux
+*.tex
+*.txt
