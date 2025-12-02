@@ -600,6 +600,33 @@
           "linewidth": 1.5
         }
       ]
+    },
+    {
+      "name": "Pendulul Matematic",
+      "plot_mode": "fit",
+      "excel_path": "Pendulul Matematic/matematic.xlsx",
+      "x_label": "l",
+      "y_label": "T^2",
+      "x_col_index": 1,
+      "y_col_index": 3,
+      "x_unit": "m",
+      "y_unit": "s^2",
+      "x_exponent": 0,
+      "y_exponent": 0,
+      "show_slope": true,
+      "slope_label": "\\alpha",
+      "slope_precision": 3,
+      "slope_unit": "\\frac{s^2}{m}",
+      "slope_exponent": 0,
+      "show_intercept": false,
+      "intercept_label": "",
+      "intercept_precision": 0,
+      "intercept_exponent": 0,
+      "intercept_unit": "",
+      "stats_pos": "bottom-right",
+      "x_start_at_zero": true,
+      "y_start_at_zero": true,
+      "force_through_origin": true
     }
   ]
 }
