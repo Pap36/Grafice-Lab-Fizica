@@ -86,6 +86,18 @@ def label_in_math_context(s: str) -> str:
         return s
     return r"\mathrm{" + s.replace(" ", r"\ ") + "}"
 
+def format_plot_title(title: Optional[str]) -> str:
+    title = (title or "").strip()
+    if not title:
+        return ""
+    if title.startswith("$") and title.endswith("$"):
+        return title
+    if "$" in title:
+        return title
+    if _looks_like_math(title):
+        return f"${title}$"
+    return title
+
 
 def main():
     print("=== Linear Fit from Excel (cosmetic exponents, unit last) ===\n")
@@ -177,6 +189,7 @@ def main():
     # ---- Columns / Series selection ----
     series_cfg = tmpl.get("series") if used_template else None
     multi_series = isinstance(series_cfg, list) and len(series_cfg) > 0
+    legend_label_override = tmpl.get("plot_label") if used_template else None
 
     # If we are in single-file mode, show columns and let existing flow work
     if not multi_file_mode:
@@ -300,6 +313,8 @@ def main():
             })
 
     # (Fit is computed later per-series only when plot_mode == 'fit' or when explicit fits are provided)
+    if legend_label_override and len(series_list) == 1:
+        series_list[0]["label"] = legend_label_override
 
     # ---- Optional explicit fits (can co-exist with series) ----
     fits_cfg = tmpl.get("fits") if used_template else None
@@ -392,6 +407,7 @@ def main():
     show_intercept = bool(tmpl.get("show_intercept", True))
     pos = (tmpl.get("stats_pos") or "bottom-right").lower()
     force_origin = bool(tmpl.get("force_through_origin"))
+    plot_title_cfg = tmpl.get("plot_name") if used_template else None
     # Axis lower-bound controls
     x_allow_negative = bool(tmpl.get("x_allow_negative", True))
     y_allow_negative = bool(tmpl.get("y_allow_negative", True))
@@ -478,6 +494,9 @@ def main():
     ax.set_xlabel(axis_label_with_unit(x_label_in, x_unit, x_exp))
     ax.set_ylabel(axis_label_with_unit(y_label_in, y_unit, y_exp))
     ax.grid(True, linestyle="--", alpha=0.4)
+    title_text = format_plot_title(plot_title_cfg)
+    if title_text:
+        ax.set_title(title_text)
 
     # ---- Annotation / Legend ----
     lines = []
