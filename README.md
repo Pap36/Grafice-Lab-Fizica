@@ -93,6 +93,7 @@ Field-by-field explanation:
 - `slope_unit`, `intercept_unit`: Units for the slope/intercept display, typeset with `\\mathrm{}` in math mode.
 - `slope_exponent`, `intercept_exponent`: Cosmetic exponents applied to the displayed values (value is divided by `10^k`, and `·10^k` is appended).
 - `stats_pos`: Position of the stats box. One of `top-right`, `top-left`, `bottom-right`, `bottom-left`.
+- `y_max`: Optional numeric maximum for the y-axis (sets the upper limit via `ylim`). Useful to zoom in on nearly-horizontal reference lines.
 
 Tips:
 

@@ -414,6 +414,14 @@ def main():
     x_start_at_zero = bool(tmpl.get("x_start_at_zero", False))
     y_start_at_zero = bool(tmpl.get("y_start_at_zero", False))
 
+    # Optional axis upper-bound controls
+    y_max = None
+    if "y_max" in tmpl and tmpl.get("y_max") is not None:
+        try:
+            y_max = float(tmpl.get("y_max"))
+        except Exception:
+            print("Warning: template y_max is not a valid number; ignoring.")
+
     # ---- Plot ----
     fig, ax = plt.subplots(figsize=(7, 5))
     plot_mode = (tmpl.get("plot_mode") or "fit").strip().lower()
@@ -557,6 +565,15 @@ def main():
             ax.set_ylim(bottom=0, top=top)
         except Exception:
             ax.set_ylim(bottom=0)
+
+    # Apply optional y-axis max if requested
+    if y_max is not None:
+        try:
+            bottom, _top = ax.get_ylim()
+            if y_max > bottom:
+                ax.set_ylim(bottom=bottom, top=y_max)
+        except Exception:
+            pass
 
     # legend when multiple labeled items or any explicit labels
     if True:
