@@ -746,6 +746,33 @@
       "x_start_at_zero": true,
       "y_start_at_zero": true,
       "force_through_origin": true
+    },
+    {
+      "name": "Pendule cuplate",
+      "plot_mode": "fit",
+      "excel_path": "Pendule Cuplate/wa-l2.xlsx",
+      "x_label": "l^2",
+      "y_label": "\\omega_a^2",
+      "x_col_index": 1,
+      "y_col_index": 8,
+      "x_unit": "m^2",
+      "y_unit": "s^{-2}",
+      "x_exponent": 0,
+      "y_exponent": 0,
+      "show_slope": true,
+      "slope_label": "\\alpha",
+      "slope_precision": 4,
+      "slope_unit": "\\frac{1}{m^2 \\cdot s^2}",
+      "slope_exponent": 0,
+      "show_intercept": true,
+      "intercept_label": "\\omega_0^2",
+      "intercept_precision": 4,
+      "intercept_exponent": 0,
+      "intercept_unit": "s^{-2}",
+      "stats_pos": "bottom-right",
+      "x_start_at_zero": false,
+      "y_start_at_zero": false,
+      "force_through_origin": false
     }
   ]
 }
