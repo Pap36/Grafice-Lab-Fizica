@@ -42,35 +42,52 @@ def _looks_like_math(s: str) -> bool:
 def axis_label_with_unit(label: str, unit: str, exponent: int = 1) -> str:
     """
     Build an axis label with the form:
-        label ×10^{exp} (unit)
-    The unit is always last.
+        label (10^{exp} · unit)
+    when both an exponent and unit are present. The unit block is always last.
     Works consistently with LaTeX and plain text.
     """
     label = (label or "").strip()
     unit  = (unit  or "").strip()
     exp_str_math = f"\\,\\cdot\\,10^{{{exponent}}}" if exponent != 0 else ""
     exp_str_plain = f" ×10^{exponent}" if exponent != 0 else ""
+    unit_with_exp_math = f"10^{{{exponent}}}\\,\\cdot\\,{unit}" if exponent != 0 and unit else ""
+    unit_with_exp_plain = f"10^{exponent} * {unit}" if exponent != 0 and unit else ""
 
-    # Detect LaTeX math
+    label_is_math = _looks_like_math(label)
+    unit_is_math = _looks_like_math(unit)
+
     if label.startswith("$") and label.endswith("$"):
-        core = label[1:-1]; is_math = True
+        label_core = label[1:-1]
+        label_is_math = True
+    elif label_is_math:
+        label_core = label
     else:
-        core = label; is_math = _looks_like_math(label)
+        label_core = label_in_math_context(label)
+
+    if unit.startswith("$") and unit.endswith("$"):
+        unit_core = unit[1:-1]
+        unit_is_math = True
+    elif unit_is_math:
+        unit_core = unit
+    else:
+        unit_core = r"\mathrm{" + unit.replace(" ", r"\ ") + "}" if unit else ""
+
+    is_math = label_is_math or unit_is_math
 
     if is_math:
         # math label
         if exponent != 0 and unit:
-            return f"${core}{exp_str_math}\\,\\mathrm{{({unit})}}$"
+            return f"${label_core}\\,({unit_with_exp_math if unit_is_math else f'10^{{{exponent}}}\\,\\cdot\\,{unit_core}'})$"
         elif exponent != 0:
-            return f"${core}{exp_str_math}$"
+            return f"${label_core}{exp_str_math}$"
         elif unit:
-            return f"${core}\\,\\mathrm{{({unit})}}$"
+            return f"${label_core}\\,({unit_core})$"
         else:
-            return f"${core}$"
+            return f"${label_core}$"
     else:
         # plain label
         if exponent != 0 and unit:
-            return f"{label}{exp_str_plain} ({unit})"
+            return f"{label} ({unit_with_exp_plain})"
         elif exponent != 0:
             return f"{label}{exp_str_plain}"
         elif unit:
@@ -97,6 +114,71 @@ def format_plot_title(title: Optional[str]) -> str:
     if _looks_like_math(title):
         return f"${title}$"
     return title
+
+
+def format_math_annotation(expr: str) -> str:
+    expr = (expr or "").strip()
+    if not expr:
+        return ""
+    if expr.startswith("$") and expr.endswith("$"):
+        return expr
+    return f"${expr}$"
+
+
+def build_formula_curve(curve_cfg: dict, x_min: Optional[float], x_max: Optional[float]) -> dict:
+    expression = str(curve_cfg.get("expression") or "").strip()
+    if not expression:
+        raise ValueError("formula_curves entries must define a non-empty 'expression'.")
+
+    num_points = int(curve_cfg.get("num_points", 400))
+    if num_points < 2:
+        raise ValueError("formula_curves 'num_points' must be at least 2.")
+
+    curve_x_min = curve_cfg.get("x_min", x_min)
+    curve_x_max = curve_cfg.get("x_max", x_max)
+    if curve_x_min is None or curve_x_max is None:
+        raise ValueError("formula_curves entries need x_min/x_max or an experimental series to infer the x-range.")
+
+    curve_x_min = float(curve_x_min)
+    curve_x_max = float(curve_x_max)
+    if curve_x_max <= curve_x_min:
+        raise ValueError("formula_curves requires x_max > x_min.")
+
+    x_values = np.linspace(curve_x_min, curve_x_max, num_points)
+    parameters = curve_cfg.get("parameters") or {}
+    if not isinstance(parameters, dict):
+        raise ValueError("formula_curves 'parameters' must be an object/dict.")
+
+    scope = {
+        "np": np,
+        "x": x_values,
+        "pi": np.pi,
+        "e": np.e,
+    }
+    scope.update(parameters)
+
+    try:
+        y_values = eval(expression, {"__builtins__": {}}, scope)
+    except Exception as exc:
+        raise ValueError(f"failed to evaluate formula '{expression}': {exc}") from exc
+
+    y_values = np.asarray(y_values, dtype=float)
+    if y_values.ndim == 0:
+        y_values = np.full_like(x_values, float(y_values), dtype=float)
+    if y_values.shape != x_values.shape:
+        raise ValueError("formula_curves expression must return a scalar or an array with the same shape as x.")
+    if not np.all(np.isfinite(y_values)):
+        raise ValueError("formula_curves expression produced non-finite values.")
+
+    return {
+        "label": curve_cfg.get("label") or "Theoretical curve",
+        "x": x_values,
+        "y": y_values,
+        "color": curve_cfg.get("color"),
+        "linestyle": curve_cfg.get("linestyle", "-"),
+        "linewidth": float(curve_cfg.get("linewidth", 2.0)),
+        "equation_latex": curve_cfg.get("equation_latex", ""),
+    }
 
 
 def main():
@@ -377,6 +459,19 @@ def main():
                 "scatter": bool(f.get("scatter", False)),
             })
 
+    # ---- Template-defined theoretical curves ----
+    formula_curves_cfg = tmpl.get("formula_curves") if used_template else None
+    formula_curves = []
+    if isinstance(formula_curves_cfg, list):
+        ref_x_min = min((np.min(s["x"]) for s in series_list), default=None)
+        ref_x_max = max((np.max(s["x"]) for s in series_list), default=None)
+        for k, curve_cfg in enumerate(formula_curves_cfg, start=1):
+            try:
+                formula_curves.append(build_formula_curve(curve_cfg, ref_x_min, ref_x_max))
+            except Exception as exc:
+                print(f"ERROR: formula_curves[{k}] {exc}")
+                sys.exit(1)
+
     # ---- Labels, units, options ----
     # For multi-series, use common labels from template or fallback to first series' column names
     # Determine axis labels: prefer explicit template labels, else fall back to first series label
@@ -426,9 +521,32 @@ def main():
     fig, ax = plt.subplots(figsize=(7, 5))
     plot_mode = (tmpl.get("plot_mode") or "fit").strip().lower()
     last_fit = None  # store last (m, b, x, y) for single-series annotation
-    if plot_mode not in {"fit", "lines"}:
+    if plot_mode not in {"fit", "lines", "steps"}:
         print("Warning: unknown plot_mode; defaulting to 'fit'.")
         plot_mode = "fit"
+
+    def draw_series(series: dict, *, label_override=None):
+        xv, yv = series["x"], series["y"]
+        label = series["label"] if label_override is None else label_override
+        color = series["color"]
+        ls = series["linestyle"]
+        marker = series["marker"]
+        lw = series["linewidth"]
+        if plot_mode == "steps":
+            step_where = (series.get("step_where") or tmpl.get("step_where") or "mid").strip().lower()
+            if step_where not in {"pre", "post", "mid"}:
+                step_where = "mid"
+            ax.step(
+                xv, yv,
+                where=step_where,
+                linestyle=ls,
+                marker=marker,
+                linewidth=lw,
+                color=color,
+                label=label,
+            )
+        else:
+            ax.plot(xv, yv, linestyle=ls, marker=marker, linewidth=lw, color=color, label=label)
 
     # Determine global x-range to extend fit lines
     all_x_values = []
@@ -436,6 +554,8 @@ def main():
         all_x_values.append(s["x"])
     for f in fits_list:
         all_x_values.append(f["x"])
+    for curve in formula_curves:
+        all_x_values.append(curve["x"])
     global_xmin = min((np.min(a) for a in all_x_values), default=None)
     global_xmax = max((np.max(a) for a in all_x_values), default=None)
     # If axis requested to start at zero, extend global range to include 0 for fit line drawing
@@ -451,8 +571,7 @@ def main():
             if used_template and tmpl.get("series_scatter_only", False):
                 ax.scatter(s["x"], s["y"], s=30, color=s["color"], marker=s["marker"], label=base_label)
             else:
-                ax.plot(s["x"], s["y"], linestyle=s["linestyle"], marker=s["marker"],
-                        linewidth=s["linewidth"], color=s["color"], label=base_label)
+                draw_series(s, label_override=base_label)
     else:
         # Back-compat behavior when explicit fits not provided
         for s in series_list:
@@ -470,7 +589,7 @@ def main():
                 ax.plot(x_line, y_line, linewidth=lw, linestyle=ls, color=color, label=label)
                 last_fit = (m, b, xv, yv, label)
             else:
-                ax.plot(xv, yv, linestyle=ls, marker=marker, linewidth=lw, color=color, label=label)
+                draw_series(s)
 
     # Draw explicit fits and extend lines across global x-range
     for f in fits_list:
@@ -489,6 +608,15 @@ def main():
             ax.scatter(xv, yv, s=30, color=color, label=None)
         ax.plot(x_line, y_line, linewidth=lw, linestyle=ls, color=color, label=label)
         last_fit = (m, b, xv, yv, label)
+
+    for curve in formula_curves:
+        ax.plot(
+            curve["x"], curve["y"],
+            linewidth=curve["linewidth"],
+            linestyle=curve["linestyle"],
+            color=curve["color"],
+            label=curve["label"],
+        )
 
     def make_div_formatter(divisor: float):
         if divisor == 0 or divisor == 1:
@@ -531,6 +659,11 @@ def main():
                 exp_str = ""
             unit_str = f"\\;\\mathrm{{({intercept_unit})}}" if intercept_unit else ""
             lines.append(f"${intercept_lbl} = {display_val:.{intercept_prec}f}{exp_str}{unit_str}$")
+
+    for curve in formula_curves:
+        equation_latex = format_math_annotation(curve.get("equation_latex", ""))
+        if equation_latex:
+            lines.append(equation_latex)
 
     pos_map = {
         "top-right": (0.98, 0.95, "right", "top"),

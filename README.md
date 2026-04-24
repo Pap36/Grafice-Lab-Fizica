@@ -86,7 +86,7 @@ Field-by-field explanation:
 - `x_col_index`, `y_col_index`: Zero-based column indices in the sheet (0 is the first column). These are applied when using the template.
 - `x_label`, `y_label`: Axis labels. Supports plain text and LaTeX math. You can use raw LaTeX (e.g., `\\frac{...}{...}`) or wrap with `$...$`. Plain text is auto-wrapped to look good in math mode when appropriate.
 - `x_unit`, `y_unit`: Units displayed at the end of the axis label. In math mode they are typeset using `\\mathrm{(...)}`.
-- `x_exponent`, `y_exponent`: Cosmetic exponents for tick formatting. A value of `k` displays ticks divided by `10^k` and appends `×10^k` in the axis label.
+- `x_exponent`, `y_exponent`: Cosmetic exponents for tick formatting. A value of `k` displays ticks divided by `10^k` and, when a unit exists, shows the axis label as `label (10^k \\cdot unit)`.
 - `show_slope`, `show_intercept`: Toggle showing the fitted line’s slope and/or intercept in the on-plot stats box.
 - `slope_label`, `intercept_label`: Symbols used in the stats, e.g., `m` or `I_z`. LaTeX supported.
 - `slope_precision`, `intercept_precision`: Decimal places for displaying numeric values.
@@ -106,9 +106,11 @@ Tips:
 - `plot_mode`: controls how data are drawn.
 	- `fit`: scatter points and draw a linear regression line (one per series). Printed fits per series; on-plot annotation appears only when there is a single series.
 	- `lines`: connect points in data order using a line with markers (no regression).
+	- `steps`: draw staircase segments between consecutive values. This is useful for distribution plots that should look like horizontal bins with vertical jumps.
 - `series`: array of datasets to plot on the same axes. Each item supports:
 	- `x_col_index`, `y_col_index` (required): zero-based column indices from the Excel sheet.
 	- `label` (shown in legend), `color`, `linestyle`, `marker`, `linewidth` (optional styling).
+	- `step_where` (optional for `steps` mode): one of `pre`, `post`, `mid`. Default is `mid`.
 
 Example: two series, connect points, show legend
 
@@ -127,4 +129,52 @@ Example: two series, connect points, show legend
 	]
 }
 ```
+
+## Theoretical formula overlays
+
+Templates can also overlay one or more theoretical curves computed from a formula while the experimental data still come from Excel.
+
+- `formula_curves`: array of computed curves to draw on the same axes as the Excel series.
+- `expression`: NumPy-compatible expression used for numeric evaluation. The variable name is `x`.
+- `parameters`: optional object of scalar parameters injected into the expression namespace.
+- `x_min`, `x_max`: optional domain for the computed curve. If omitted, the script falls back to the x-range of the experimental series.
+- `num_points`: optional number of samples for the computed curve. Default is `400`.
+- `equation_latex`: optional LaTeX string shown in the annotation box on the plot.
+- `label`, `color`, `linestyle`, `linewidth`: optional styling for the theoretical curve.
+
+Example: overlay a Maxwell distribution over experimental distribution data stored in `Maxwell/Maxwell.xlsx`.
+
+```json
+{
+	"name": "Maxwell distribution",
+	"plot_mode": "lines",
+	"excel_path": "Maxwell/Maxwell.xlsx",
+	"x_label": "c",
+	"y_label": "F(c)",
+	"x_unit": "m \\cdot s^{-1}",
+	"y_unit": "s \\cdot m^{-1}",
+	"series": [
+		{
+			"label": "Distribuție experimentală",
+			"x_col_index": 0,
+			"y_col_index": 2,
+			"marker": "o"
+		}
+	],
+	"formula_curves": [
+		{
+			"label": "Distribuție Maxwell teoretică",
+			"expression": "4 / np.sqrt(np.pi) * (1 / c_w**2)**1.5 * x**2 * np.exp(-(x**2) / c_w**2)",
+			"equation_latex": "F(c) = \\frac{4}{\\sqrt{\\pi}} \\left( \\frac{1}{c_w^2} \\right)^{3/2} c^2 \\exp \\left( -\\frac{c^2}{c_w^2} \\right)",
+			"parameters": { "c_w": 0.75 },
+			"x_min": 0.0,
+			"x_max": 2.0,
+			"num_points": 400,
+			"linestyle": "--"
+		}
+	]
+}
+```
+
+This repository now includes a mock workbook at `Maxwell/Maxwell.xlsx` that can be used to test the feature immediately.
 
