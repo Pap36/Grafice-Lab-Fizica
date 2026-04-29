@@ -1,6 +1,15 @@
 .DS_Store
 /__pycache__
 .venv/
+.env
+.env.*
+!.env.example
+.firebase/
+**/.~lock.*
+web/node_modules/
+web/dist/
+web/.vite/
+*.tsbuildinfo
 caldura_molara_report.*
 *.pdf
 *.log

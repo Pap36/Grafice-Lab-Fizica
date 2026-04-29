@@ -3,7 +3,6 @@
     {
       "name": "Axe paralele-torsiune",
       "plot_mode": "fit",
-      "excel_path": "Axe paralele/c_torsiune.xlsx",
       "x_col_index": 5,
       "y_col_index": 4,
       "x_label": "\\phi",
@@ -27,7 +26,6 @@
     {
       "name": "Axe paralele-Moment de inertie",
       "plot_mode": "fit",
-      "excel_path": "Axe paralele/axe_paralele.xlsx",
       "x_col_index": 5,
       "y_col_index": 4,
       "x_label": "a^2",
@@ -51,7 +49,6 @@
     {
       "name": "Dinamica torsiunii",
       "plot_mode": "fit",
-      "excel_path": "Dinamica torsiunii/dinamica_torsiunii.xlsx",
       "x_col_index": 2,
       "y_col_index": 4,
       "x_label": "d^2",
@@ -71,15 +68,13 @@
       "intercept_exponent": 0,
       "intercept_unit": "s^2",
       "stats_pos": "bottom-right"
-    }
-    ,
+    },
     {
       "name": "Pendulul Mach",
       "plot_mode": "lines",
-      "excel_path": "Pendulul Mach/pendulul_mach.xlsx",
       "x_label": "\\beta",
       "y_label": "T'",
-        "x_unit": "°",
+      "x_unit": "°",
       "y_unit": "s",
       "x_exponent": 0,
       "y_exponent": 0,
@@ -91,7 +86,7 @@
           "color": "#1f77b4",
           "linestyle": "-",
           "marker": "o",
-          "linewidth": 1.0
+          "linewidth": 1
         },
         {
           "label": "T' teoretic",
@@ -100,7 +95,7 @@
           "color": "#d62728",
           "linestyle": "-",
           "marker": "s",
-          "linewidth": 1.0
+          "linewidth": 1
         }
       ],
       "stats_pos": "bottom-right"
@@ -108,7 +103,6 @@
     {
       "name": "Calo",
       "plot_mode": "fit",
-      "excel_path": "Calo/calo.xlsx",
       "x_col_index": 0,
       "y_col_index": 1,
       "x_start_at_zero": true,
@@ -150,7 +144,7 @@
           "row_end": null,
           "color": "#d62728",
           "linestyle": "--",
-          "linewidth": 2.0,
+          "linewidth": 2,
           "scatter": false
         }
       ],
@@ -159,7 +153,6 @@
     {
       "name": "Calo-lines",
       "plot_mode": "lines",
-      "excel_path": "Calo/calo.xlsx",
       "x_col_index": 0,
       "y_col_index": 1,
       "x_label": "\\tau",
@@ -183,7 +176,6 @@
     {
       "name": "Calo-std",
       "plot_mode": "fit",
-      "excel_path": "Calo/calo.xlsx",
       "x_col_index": 2,
       "y_col_index": 3,
       "x_label": "\\tau",
@@ -209,7 +201,6 @@
       "plot_label": "$t=55.6^{\\circ} C$",
       "label": "55.6^\\circ",
       "plot_mode": "fit",
-      "excel_path": "Ecuatia de stare/izoterma.xlsx",
       "x_col_index": 10,
       "y_col_index": 8,
       "x_label": "\\frac{1}{V}",
@@ -234,7 +225,6 @@
       "name": "Ecuatia de stare - izobara",
       "plot_label": "$p=1005 hPa$",
       "plot_mode": "fit",
-      "excel_path": "Ecuatia de stare/izobara.xlsx",
       "x_col_index": 2,
       "y_col_index": 3,
       "x_label": "T",
@@ -259,7 +249,6 @@
       "name": "Ecuatia de stare - izocora",
       "plot_label": "$V=57 ml$",
       "plot_mode": "fit",
-      "excel_path": "Ecuatia de stare/izocora.xlsx",
       "x_col_index": 2,
       "y_col_index": 3,
       "row_end": 3,
@@ -284,7 +273,6 @@
     {
       "name": "Ecuatia de stare - izoterma-compusa",
       "plot_mode": "fit",
-      "excel_path": "Ecuatia de stare/izoterma.xlsx",
       "x_label": "\\frac{1}{V}",
       "y_label": "p",
       "x_col_index": 4,
@@ -314,9 +302,9 @@
           "y_col_index": 2,
           "row_start": 0,
           "color": "#1f77b4",
-          "linewidth": 2.0,
+          "linewidth": 2,
           "scatter": true
-        }, 
+        },
         {
           "label": "Izoterm 55.6 C",
           "x_col_index": 10,
@@ -324,7 +312,7 @@
           "row_start": 0,
           "row_end": null,
           "color": "#d62728",
-          "linewidth": 2.0,
+          "linewidth": 2,
           "scatter": true
         }
       ]
@@ -332,7 +320,6 @@
     {
       "name": "Resort 1 static",
       "plot_mode": "fit",
-      "excel_path": "Elastica/resort1.xlsx",
       "x_label": "\\Delta l",
       "y_label": "G",
       "x_col_index": 6,
@@ -359,7 +346,6 @@
     {
       "name": "Resort 2 static",
       "plot_mode": "fit",
-      "excel_path": "Elastica/resort2.xlsx",
       "x_label": "\\Delta l",
       "y_label": "G",
       "x_col_index": 6,
@@ -386,7 +372,6 @@
     {
       "name": "Resort 3 static",
       "plot_mode": "fit",
-      "excel_path": "Elastica/resort3.xlsx",
       "x_label": "\\Delta l",
       "y_label": "G",
       "x_col_index": 6,
@@ -434,11 +419,9 @@
       "x_start_at_zero": true,
       "y_start_at_zero": true,
       "force_through_origin": true,
-      "output": "Elastica_resorts_combined.png",
       "series": [
         {
           "label": "Resort 1 static",
-          "excel_path": "Elastica/resort1.xlsx",
           "x_col_index": 6,
           "y_col_index": 5,
           "color": "#1f77b4",
@@ -448,7 +431,6 @@
         },
         {
           "label": "Resort 2 static",
-          "excel_path": "Elastica/resort2.xlsx",
           "x_col_index": 6,
           "y_col_index": 5,
           "color": "#ff7f0e",
@@ -458,7 +440,6 @@
         },
         {
           "label": "Resort 3 static",
-          "excel_path": "Elastica/resort3.xlsx",
           "x_col_index": 6,
           "y_col_index": 5,
           "color": "#2ca02c",
@@ -471,7 +452,6 @@
     {
       "name": "Resort 1 dinamic",
       "plot_mode": "fit",
-      "excel_path": "Elastica/resort1_dinamic.xlsx",
       "x_label": "m",
       "y_label": "T^2",
       "x_col_index": 1,
@@ -498,7 +478,6 @@
     {
       "name": "Resort 2 dinamic",
       "plot_mode": "fit",
-      "excel_path": "Elastica/resort2_dinamic.xlsx",
       "x_label": "m",
       "y_label": "T^2",
       "x_col_index": 1,
@@ -525,7 +504,6 @@
     {
       "name": "Resort 3 dinamic",
       "plot_mode": "fit",
-      "excel_path": "Elastica/resort3_dinamic.xlsx",
       "x_label": "m",
       "y_label": "T^2",
       "x_col_index": 1,
@@ -573,11 +551,9 @@
       "x_start_at_zero": true,
       "y_start_at_zero": true,
       "force_through_origin": true,
-      "output": "Elastica_resorts_dinamic_combined.png",
       "series": [
         {
           "label": "Resort 1 dinamic",
-          "excel_path": "Elastica/resort1_dinamic.xlsx",
           "x_col_index": 1,
           "y_col_index": 4,
           "color": "#1f77b4",
@@ -587,7 +563,6 @@
         },
         {
           "label": "Resort 2 dinamic",
-          "excel_path": "Elastica/resort2_dinamic.xlsx",
           "x_col_index": 1,
           "y_col_index": 4,
           "color": "#ff7f0e",
@@ -597,7 +572,6 @@
         },
         {
           "label": "Resort 3 dinamic",
-          "excel_path": "Elastica/resort3_dinamic.xlsx",
           "x_col_index": 1,
           "y_col_index": 4,
           "color": "#2ca02c",
@@ -610,7 +584,6 @@
     {
       "name": "Pendulul Matematic",
       "plot_mode": "fit",
-      "excel_path": "Pendulul Matematic/matematic.xlsx",
       "x_label": "l",
       "y_label": "T^2",
       "x_col_index": 1,
@@ -637,7 +610,6 @@
     {
       "name": "Cadere libera - g",
       "plot_mode": "fit",
-      "excel_path": "Caderea Libera/cadere.xlsx",
       "x_label": "h",
       "y_label": "g",
       "x_col_index": 0,
@@ -662,7 +634,7 @@
       "series_scatter_only": true,
       "series": [
         {
-          "label": "M\u0103surat",
+          "label": "Măsurat",
           "x_col_index": 0,
           "y_col_index": 3,
           "color": "#1f77b4",
@@ -676,7 +648,7 @@
           "y_col_index": 11,
           "color": "#d62728",
           "linestyle": "--",
-          "linewidth": 2.0,
+          "linewidth": 2,
           "scatter": false
         },
         {
@@ -685,7 +657,7 @@
           "y_col_index": 3,
           "color": "#1f77b4",
           "linestyle": "-",
-          "linewidth": 2.0,
+          "linewidth": 2,
           "scatter": false
         }
       ],
@@ -696,7 +668,6 @@
     {
       "name": "Cadere libera - h/t",
       "plot_mode": "lines",
-      "excel_path": "Caderea Libera/cadere.xlsx",
       "x_label": "t",
       "y_label": "h",
       "x_col_index": 1,
@@ -723,7 +694,6 @@
     {
       "name": "Cadere libera - h/t^2",
       "plot_mode": "fit",
-      "excel_path": "Caderea Libera/cadere.xlsx",
       "x_label": "t^2",
       "y_label": "h",
       "x_col_index": 2,
@@ -750,7 +720,6 @@
     {
       "name": "Pendule cuplate",
       "plot_mode": "fit",
-      "excel_path": "Pendule Cuplate/wa-l2.xlsx",
       "x_label": "l^2",
       "y_label": "\\omega_a^2",
       "x_col_index": 1,
@@ -777,7 +746,6 @@
     {
       "name": "Dependenta logaritmica dintre radiatie si temperatura",
       "plot_mode": "fit",
-      "excel_path": "Boltzman/Boltzman.xlsx",
       "x_label": "\\log T",
       "y_label": "\\log U_{termo}",
       "x_col_index": 5,
@@ -804,7 +772,6 @@
     {
       "name": "Dependenta dintre presiunea vaporilor si inversul temperaturii",
       "plot_mode": "fit",
-      "excel_path": "Presiune Vapori/Presiune Vapori.xlsx",
       "x_label": "T^{-1}",
       "y_label": "\\ln p",
       "x_col_index": 4,
@@ -831,7 +798,6 @@
     {
       "name": "Parabola Apa",
       "plot_mode": "fit",
-      "excel_path": "Parabola apa/Parabola Apa.xlsx",
       "x_label": "\\omega^2",
       "y_label": "\\Delta z",
       "x_col_index": 2,
@@ -858,7 +824,6 @@
     {
       "name": "R_t",
       "plot_mode": "lines",
-      "excel_path": "Boltzman/Boltzman.xlsx",
       "x_label": "t",
       "y_label": "R",
       "x_col_index": 10,
@@ -882,7 +847,7 @@
       "y_start_at_zero": false,
       "force_through_origin": false
     },
-        {
+    {
       "name": "Torsiunea tijei",
       "plot_mode": "fit",
       "plot_name": "Torsiunea tijei",
@@ -907,7 +872,6 @@
       "series": [
         {
           "label": "Torsiunea tijei - 1kg",
-          "excel_path": "Torsiunea tijei/Torsiunea tijei.xlsx",
           "x_col_index": 1,
           "y_col_index": 0,
           "color": "#1f77b4",
@@ -918,7 +882,6 @@
         },
         {
           "label": "Torsiunea tijei - 2kg",
-          "excel_path": "Torsiunea tijei/Torsiunea tijei.xlsx",
           "x_col_index": 4,
           "y_col_index": 3,
           "color": "#1a77b4",
@@ -928,7 +891,6 @@
         },
         {
           "label": "Torsiunea tijei - 3kg",
-          "excel_path": "Torsiunea tijei/Torsiunea tijei.xlsx",
           "x_col_index": 7,
           "y_col_index": 6,
           "color": "#1fc7b4",
@@ -938,7 +900,6 @@
         },
         {
           "label": "Torsiunea tijei - 4kg",
-          "excel_path": "Torsiunea tijei/Torsiunea tijei.xlsx",
           "x_col_index": 10,
           "y_col_index": 9,
           "color": "#1fddb4",
@@ -948,7 +909,6 @@
         },
         {
           "label": "Torsiunea tijei - 5kg",
-          "excel_path": "Torsiunea tijei/Torsiunea tijei.xlsx",
           "x_col_index": 13,
           "y_col_index": 12,
           "color": "#1f21b4",
@@ -962,7 +922,6 @@
       "name": "Maxwell distribution",
       "plot_mode": "steps",
       "plot_name": "$F(c)$ experimental vs. Maxwell",
-      "excel_path": "Maxwell/Maxwell.xlsx",
       "x_label": "c",
       "y_label": "F(c)",
       "x_unit": "m \\cdot s^{-1}",
@@ -994,16 +953,16 @@
           "parameters": {
             "c_w": 0.39
           },
-          "x_min": 0.0,
-          "x_max": 2.0,
+          "x_min": 0,
+          "x_max": 2,
           "num_points": 400,
           "color": "#d62728",
           "linestyle": "--",
-          "linewidth": 2.0
+          "linewidth": 2
         }
       ]
     },
-     {
+    {
       "name": "Tensiune Bula",
       "plot_mode": "lines",
       "plot_name": "Tensiune Bula",
@@ -1028,7 +987,6 @@
       "series": [
         {
           "label": "Tensiune bula - exp",
-          "excel_path": "Tensiune Superficiala/Tensiunea bulei.xlsx",
           "x_col_index": 0,
           "y_col_index": 7,
           "color": "#1f77b4",
@@ -1039,7 +997,6 @@
         },
         {
           "label": "Torsiunea tijei - teor",
-          "excel_path": "Tensiune Superficiala/Tensiunea bulei.xlsx",
           "x_col_index": 0,
           "y_col_index": 8,
           "color": "#ffbbee",

@@ -2,6 +2,28 @@
 
 Utility script for fitting linear models to physics lab data stored in Excel spreadsheets. The script reads a workbook, applies cosmetic scaling factors to axis labels, performs a linear regression, and exports a PNG plot alongside the source spreadsheet.
 
+## Web App
+
+The repository also includes a browser-only web app in `web/` for interactive plotting without a Python environment. It lets users upload their own `.xlsx` file, edit cells and column headers in the browser, switch the interface between English and Romanian, add multiple plots to the same graph, collapse individual plot setting cards, resize or collapse the settings, plotter, and parameters panes, resize the plot preview and file editor panels, choose whether each plot comes from file columns or a theoretical formula, draw data as lines or steps, fit data with linear, polynomial, exponential, or gaussian models, choose which fit statistics appear for each plot, use visible LaTeX-style labels/annotations/legend labels, add legend-only text entries under a separate legend divider without drawing data on the plot, keep fit points and lines under one legend entry, export or import file-specific plot settings as JSON or CSV templates, preview the PNG output, resize an export frame around the exact area to save, and download the cropped graph as a PNG.
+
+Uploaded workbooks are parsed locally in the browser with `read-excel-file`. There is no upload endpoint, no backend, and no persistence layer in the app. Workbook edits are kept only in the current browser session and immediately update the plot preview.
+
+From the repository root:
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Useful web commands:
+
+- `npm run dev`: start the local web app.
+- `npm test`: run focused unit tests for plotting math and workbook editing helpers.
+- `npm run build`: type-check and build the production web bundle.
+
+The existing Python script remains available for local/offline plotting workflows.
+
 ## Installation
 
 ### macOS
