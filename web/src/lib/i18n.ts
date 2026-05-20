@@ -63,6 +63,10 @@ export interface AppTranslations {
   yUnit: string
   xExp: string
   yExp: string
+  xTickStep: string
+  yTickStep: string
+  xTickPrecision: string
+  yTickPrecision: string
   xStartsZero: string
   yStartsZero: string
   appTitle: string
@@ -206,6 +210,10 @@ const translations: Record<AppLanguage, AppTranslations> = {
     yUnit: 'Y unit',
     xExp: 'X exp',
     yExp: 'Y exp',
+    xTickStep: 'X step',
+    yTickStep: 'Y step',
+    xTickPrecision: 'X decimals',
+    yTickPrecision: 'Y decimals',
     xStartsZero: 'X starts zero',
     yStartsZero: 'Y starts zero',
     appTitle: 'Physics Lab Plotter',
@@ -345,6 +353,10 @@ const translations: Record<AppLanguage, AppTranslations> = {
     yUnit: 'Unitate Y',
     xExp: 'Exponent X',
     yExp: 'Exponent Y',
+    xTickStep: 'Pas X',
+    yTickStep: 'Pas Y',
+    xTickPrecision: 'Zecimale X',
+    yTickPrecision: 'Zecimale Y',
     xStartsZero: 'X porneste din zero',
     yStartsZero: 'Y porneste din zero',
     appTitle: 'Plotter laborator de fizica',

@@ -31,8 +31,10 @@ export function parseEditableCell(value: string): unknown {
   if (trimmed === '') {
     return ''
   }
-  if (/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(trimmed)) {
-    return Number(trimmed)
+  // Normalize European decimal comma (e.g. "2,4" → "2.4")
+  const normalized = trimmed.replace(',', '.')
+  if (/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(normalized)) {
+    return Number(normalized)
   }
   return value
 }

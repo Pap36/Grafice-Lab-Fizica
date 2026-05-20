@@ -105,6 +105,10 @@ export interface PlotTemplate {
   x_start_at_zero?: boolean
   y_start_at_zero?: boolean
   y_max?: number | null
+  x_tick_step?: number | null
+  y_tick_step?: number | null
+  x_tick_precision?: number | null
+  y_tick_precision?: number | null
   hide_base_series_legend?: boolean
   series_scatter_only?: boolean
   step_where?: StepWhere

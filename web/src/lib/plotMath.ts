@@ -602,8 +602,12 @@ export function buildFormulaCurve(
   }
 }
 
-export function scaledTickText(value: number, exponent: number): string {
+export function scaledTickText(value: number, exponent: number, precision?: number | null): string {
   const divisor = 10 ** exponent
   const display = divisor === 0 || divisor === 1 ? value : value / divisor
+  if (precision !== undefined && precision !== null && Number.isFinite(precision)) {
+    const decimals = Math.max(0, Math.min(20, Math.trunc(precision)))
+    return display.toFixed(decimals)
+  }
   return Number.isInteger(display) ? String(display) : Number(display.toPrecision(6)).toString()
 }

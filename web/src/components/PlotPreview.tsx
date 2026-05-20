@@ -4,10 +4,12 @@ import type { PlotBuildResult } from '../lib/plotlyAdapter'
 
 export interface PlotPreviewHandle {
   downloadPng: () => Promise<void>
+  applyAxisFormatting: () => Promise<void>
 }
 
 interface PlotPreviewProps {
   figure: PlotBuildResult
+  recomputeTicks: (xRange: [number, number], yRange: [number, number]) => Record<string, unknown>
   exportLabels: {
     title: string
     help: string
@@ -67,6 +69,17 @@ const exportPreviewConfig = {
   }
 }
 
+const exportAxisFrame = {
+  showline: true,
+  linewidth: 1,
+  linecolor: '#111827',
+  mirror: true as const,
+  ticks: 'outside' as const,
+  tickcolor: '#111827',
+  ticklen: 6,
+  tickwidth: 1
+}
+
 function buildExportLayout(layout: Record<string, any>): Record<string, any> {
   const exportLayout = JSON.parse(JSON.stringify(layout)) as Record<string, any>
   const currentTopMargin = Number(exportLayout.margin?.t ?? 92)
@@ -76,6 +89,9 @@ function buildExportLayout(layout: Record<string, any>): Record<string, any> {
     ...(exportLayout.margin ?? {}),
     t: currentTopMargin + 52
   }
+
+  exportLayout.xaxis = { ...(exportLayout.xaxis ?? {}), ...exportAxisFrame }
+  exportLayout.yaxis = { ...(exportLayout.yaxis ?? {}), ...exportAxisFrame }
 
   exportLayout.annotations = [...(exportLayout.annotations ?? [])]
 
@@ -192,9 +208,11 @@ async function refreshMathJax(): Promise<void> {
   }
 }
 
-const PlotPreview = forwardRef<PlotPreviewHandle, PlotPreviewProps>(({ figure, exportLabels }, ref) => {
+const PlotPreview = forwardRef<PlotPreviewHandle, PlotPreviewProps>(({ figure, recomputeTicks, exportLabels }, ref) => {
   const plotNodeRef = useRef<HTMLDivElement | null>(null)
   const exportPreviewRef = useRef<HTMLDivElement | null>(null)
+  const recomputeTicksRef = useRef(recomputeTicks)
+  recomputeTicksRef.current = recomputeTicks
   const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false)
   const [exportCanvasSize, setExportCanvasSize] = useState<ExportCanvasSize>(fallbackExportCanvasSize)
   const [exportFrame, setExportFrame] = useState<ExportFrame>(defaultExportFrameForSize(fallbackExportCanvasSize))
@@ -204,14 +222,51 @@ const PlotPreview = forwardRef<PlotPreviewHandle, PlotPreviewProps>(({ figure, e
       return
     }
     const plotNode = plotNodeRef.current
-    Plotly.react(plotNodeRef.current, figure.data, figure.layout, plotConfig).then(refreshMathJax)
+    const plotEmitter = plotNode as unknown as {
+      on?: (event: string, handler: (eventData: any) => void) => void
+      removeAllListeners?: (event: string) => void
+      _fullLayout?: { xaxis?: { range?: [number, number] }; yaxis?: { range?: [number, number] } }
+    }
+
+    let isMounted = true
+    let isUpdatingTicks = false
+
+    const rangeEventKeyPattern = /^[xy]axis\.(range(\[\d\])?|autorange)$/
+
+    const handleRelayout = async (eventData: any) => {
+      if (!isMounted || isUpdatingTicks || !eventData) return
+      const hasRangeChange = Object.keys(eventData).some((key) => rangeEventKeyPattern.test(key))
+      if (!hasRangeChange) return
+      const xRange = plotEmitter._fullLayout?.xaxis?.range
+      const yRange = plotEmitter._fullLayout?.yaxis?.range
+      if (!xRange || !yRange) return
+
+      isUpdatingTicks = true
+      try {
+        await Plotly.relayout(plotNode, recomputeTicksRef.current(xRange, yRange))
+      } catch {
+        // ignore relayout errors mid-interaction
+      } finally {
+        isUpdatingTicks = false
+      }
+    }
+
+    Plotly.react(plotNode, figure.data, figure.layout, plotConfig).then(() => {
+      if (!isMounted) return
+      plotEmitter.on?.('plotly_relayout', handleRelayout)
+      return refreshMathJax()
+    })
 
     const resizeObserver = new ResizeObserver(() => {
       Plotly.Plots.resize(plotNode)
     })
     resizeObserver.observe(plotNode)
 
-    return () => resizeObserver.disconnect()
+    return () => {
+      isMounted = false
+      resizeObserver.disconnect()
+      plotEmitter.removeAllListeners?.('plotly_relayout')
+    }
   }, [figure])
 
   useImperativeHandle(ref, () => ({
@@ -222,6 +277,20 @@ const PlotPreview = forwardRef<PlotPreviewHandle, PlotPreviewProps>(({ figure, e
       setExportCanvasSize(fallbackExportCanvasSize)
       setExportFrame(defaultExportFrameForSize(fallbackExportCanvasSize))
       setIsExportPreviewOpen(true)
+    },
+    async applyAxisFormatting() {
+      const plotNode = plotNodeRef.current as (HTMLDivElement & {
+        _fullLayout?: { xaxis?: { range?: [number, number] }; yaxis?: { range?: [number, number] } }
+      }) | null
+      if (!plotNode) return
+      const xRange = plotNode._fullLayout?.xaxis?.range
+      const yRange = plotNode._fullLayout?.yaxis?.range
+      if (!xRange || !yRange) return
+      try {
+        await Plotly.relayout(plotNode, recomputeTicksRef.current(xRange, yRange))
+      } catch {
+        // ignore mid-update errors
+      }
     }
   }))
 

@@ -23,6 +23,7 @@ export interface PlotBuildResult {
   layout: any
   summaries: string[]
   errors: string[]
+  recomputeTicks: (xRange: [number, number], yRange: [number, number]) => Record<string, unknown>
 }
 
 const palette = ['#2563eb', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#0891b2', '#be123c']
@@ -159,20 +160,85 @@ function annotationPosition(position?: string): Pick<any, 'x' | 'y' | 'xanchor' 
   }
 }
 
-function buildTicks(values: number[], exponent: number): { tickvals?: number[]; ticktext?: string[] } {
+function niceStep(rawStep: number): number {
+  if (rawStep <= 0 || !Number.isFinite(rawStep)) return 1
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)))
+  const normalized = rawStep / magnitude
+  if (normalized <= 1) return magnitude
+  if (normalized <= 2) return 2 * magnitude
+  if (normalized <= 5) return 5 * magnitude
+  return 10 * magnitude
+}
+
+function niceTickValues(min: number, max: number, targetCount = 6, fixedStep?: number | null): number[] {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min >= max) return [min]
+  const useFixedStep = fixedStep !== undefined && fixedStep !== null && Number.isFinite(fixedStep) && fixedStep > 0
+  const step = useFixedStep ? Number(fixedStep) : niceStep((max - min) / (targetCount - 1))
+  const start = parseFloat((Math.floor(min / step) * step).toPrecision(12))
+  const end = parseFloat((Math.ceil(max / step) * step).toPrecision(12))
+  const ticks: number[] = []
+  let current = start
+  const safetyLimit = useFixedStep ? 1000 : 200
+  while (current <= end + step * 1e-9 && ticks.length < safetyLimit) {
+    ticks.push(parseFloat(current.toPrecision(12)))
+    current += step
+  }
+  return ticks.length > 0 ? ticks : [min]
+}
+
+export interface AxisFormatting {
+  step?: number | null
+  precision?: number | null
+}
+
+export function computeAxisTickUpdates(
+  xRange: [number, number],
+  yRange: [number, number],
+  xExponent: number,
+  yExponent: number,
+  xFormatting: AxisFormatting = {},
+  yFormatting: AxisFormatting = {}
+): Record<string, unknown> {
+  const xTickValues = niceTickValues(xRange[0], xRange[1], 6, xFormatting.step)
+  const yTickValues = niceTickValues(yRange[0], yRange[1], 6, yFormatting.step)
+  const xTickText = xTickValues.map((value) => scaledTickText(value, xExponent, xFormatting.precision))
+  const yTickText = yTickValues.map((value) => scaledTickText(value, yExponent, yFormatting.precision))
+  if (xTickText.length > 1 && yTickValues.length > 0) {
+    xTickText[0] = ''
+  }
+  return {
+    'xaxis.tickvals': xTickValues,
+    'xaxis.ticktext': xTickText,
+    'yaxis.tickvals': yTickValues,
+    'yaxis.ticktext': yTickText
+  }
+}
+
+function buildTicks(
+  values: number[],
+  exponent: number,
+  forceMin?: number,
+  forceMax?: number,
+  formatting: AxisFormatting = {}
+): { tickvals?: number[]; ticktext?: string[]; range?: [number, number] } {
   const finiteValues = values.filter(Number.isFinite)
-  if (finiteValues.length === 0) {
-    return {}
+  if (finiteValues.length === 0) return {}
+  const dataMin = Math.min(...finiteValues)
+  const dataMax = Math.max(...finiteValues)
+  const effectiveMin = forceMin !== undefined ? forceMin : dataMin
+  const effectiveMax = forceMax !== undefined ? forceMax : dataMax
+  if (effectiveMin === effectiveMax) {
+    return {
+      tickvals: [effectiveMin],
+      ticktext: [scaledTickText(effectiveMin, exponent, formatting.precision)],
+      range: [effectiveMin - 1, effectiveMin + 1]
+    }
   }
-  const minimum = Math.min(...finiteValues)
-  const maximum = Math.max(...finiteValues)
-  if (minimum === maximum) {
-    return { tickvals: [minimum], ticktext: [scaledTickText(minimum, exponent)] }
-  }
-  const tickValues = linspace(minimum, maximum, 6)
+  const tickValues = niceTickValues(effectiveMin, effectiveMax, 6, formatting.step)
   return {
     tickvals: tickValues,
-    ticktext: tickValues.map((value) => scaledTickText(value, exponent))
+    ticktext: tickValues.map((value) => scaledTickText(value, exponent, formatting.precision)),
+    range: [tickValues[0], tickValues[tickValues.length - 1]]
   }
 }
 
@@ -306,10 +372,17 @@ export function buildPlotFigure(config: EditablePlotConfig, sheet: WorksheetData
   const allYValues: number[] = []
   const annotationLines: string[] = []
 
+  const xExponent = Number(config.x_exponent ?? 1)
+  const yExponent = Number(config.y_exponent ?? 1)
+  const xFormatting: AxisFormatting = { step: config.x_tick_step, precision: config.x_tick_precision }
+  const yFormatting: AxisFormatting = { step: config.y_tick_step, precision: config.y_tick_precision }
+  const recomputeTicks = (xRange: [number, number], yRange: [number, number]) =>
+    computeAxisTickUpdates(xRange, yRange, xExponent, yExponent, xFormatting, yFormatting)
+
   const plots = config.plots ?? []
   if (plots.length === 0) {
     errors.push(t.addPlotToBegin)
-    return { data, summaries, errors, layout: baseLayout(config, [], []) }
+    return { data, summaries, errors, layout: baseLayout(config, [], []), recomputeTicks }
   }
 
   const preparedWorkbookPlots: Array<{ plot: WorkbookPlotConfig; xValues: number[]; yValues: number[]; index: number }> = []
@@ -477,15 +550,33 @@ export function buildPlotFigure(config: EditablePlotConfig, sheet: WorksheetData
     data,
     summaries,
     errors,
-    layout: baseLayout(config, allXValues, allYValues, annotationLines)
+    layout: baseLayout(config, allXValues, allYValues, annotationLines),
+    recomputeTicks
   }
 }
 
 function baseLayout(config: EditablePlotConfig, xValues: number[], yValues: number[], annotationLines: string[] = []): any {
   const xExponent = Number(config.x_exponent ?? 1)
   const yExponent = Number(config.y_exponent ?? 1)
-  const xTicks = buildTicks(xValues, xExponent)
-  const yTicks = buildTicks(yValues, yExponent)
+
+  const xForceMin = (config.x_start_at_zero || config.x_allow_negative === false) ? 0 : undefined
+  const hasYMaximum = config.y_max !== undefined && config.y_max !== null
+  const yForceMin = (config.y_start_at_zero || config.y_allow_negative === false || hasYMaximum) ? 0 : undefined
+  const yForceMax = hasYMaximum ? Number(config.y_max) : undefined
+
+  const xFormatting: AxisFormatting = { step: config.x_tick_step, precision: config.x_tick_precision }
+  const yFormatting: AxisFormatting = { step: config.y_tick_step, precision: config.y_tick_precision }
+
+  const xTicks = buildTicks(xValues, xExponent, xForceMin, undefined, xFormatting)
+  const yTicks = buildTicks(yValues, yExponent, yForceMin, yForceMax, yFormatting)
+
+  // The first x-axis tick label sits at the y-axis line (left edge of the plot).
+  // When both axes have labels this corner label overlaps the y-axis tick labels,
+  // so suppress it. The tick mark remains; hover still shows the exact value.
+  const xTicksAdjusted = (xTicks.ticktext?.length ?? 0) > 1 && (yTicks.tickvals?.length ?? 0) > 0
+    ? { ...xTicks, ticktext: ['', ...(xTicks.ticktext ?? []).slice(1)] }
+    : xTicks
+
   const annotations = annotationLines.length
     ? [
       {
@@ -504,14 +595,6 @@ function baseLayout(config: EditablePlotConfig, xValues: number[], yValues: numb
     ]
     : []
 
-  const xRange = xValues.length && (config.x_start_at_zero || config.x_allow_negative === false)
-    ? [0, Math.max(...xValues)]
-    : undefined
-  const hasYMaximum = config.y_max !== undefined && config.y_max !== null
-  const yRange = yValues.length && (config.y_start_at_zero || config.y_allow_negative === false || hasYMaximum)
-    ? [0, Number(hasYMaximum ? config.y_max : Math.max(...yValues))]
-    : undefined
-
   return {
     title: { text: formatPlotTitle(config.plot_name), x: 0.03, xanchor: 'left', y: 1.34, yanchor: 'top', font: { size: 16 } },
     margin: { l: 96, r: 44, t: config.plot_name ? 152 : 92, b: 92 },
@@ -524,15 +607,13 @@ function baseLayout(config: EditablePlotConfig, xValues: number[], yValues: numb
       automargin: true,
       gridcolor: '#e5e7eb',
       zerolinecolor: '#cbd5e1',
-      range: xRange,
-      ...xTicks
+      ...xTicksAdjusted
     },
     yaxis: {
       title: { text: axisLabelWithUnit(config.y_label || 'y', config.y_unit || '', yExponent), standoff: 22 },
       automargin: true,
       gridcolor: '#e5e7eb',
       zerolinecolor: '#cbd5e1',
-      range: yRange,
       ...yTicks
     },
     annotations

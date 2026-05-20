@@ -1,9 +1,9 @@
 import { ChevronDown, ChevronLeft, ChevronRight, Download, GripHorizontal, GripVertical, Plus, RefreshCw, Trash2, Upload } from 'lucide-react'
-import { ChangeEvent, useMemo, useRef, useState } from 'react'
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import PlotPreview, { type PlotPreviewHandle } from './components/PlotPreview'
 import { detectInitialLanguage, getTranslations, languageOptions, localizeRuntimeMessage, type AppLanguage, type AppTranslations } from './lib/i18n'
 import { formatLatexText } from './lib/plotMath'
-import { buildPlotFigure } from './lib/plotlyAdapter'
+import { buildPlotFigure, computeAxisTickUpdates } from './lib/plotlyAdapter'
 import { buildWorkbookSettingsTemplate, parseWorkbookSettingsTemplate, templateToCsv } from './lib/templateTransfer'
 import { addSheetColumn, addSheetRow, formatEditableCell, getSheet, parseEditableCell, parseWorkbook, updateCell, updateColumnName } from './lib/workbook'
 import type {
@@ -17,6 +17,29 @@ import type {
   WorkbookPlotConfig,
   WorksheetData
 } from './types/templates'
+
+const tickFormattingKeys: (keyof EditablePlotConfig)[] = ['x_tick_step', 'y_tick_step', 'x_tick_precision', 'y_tick_precision']
+
+function useStableExceptKeys<T extends object>(value: T, keysToIgnore: (keyof T)[]): T {
+  const ref = useRef<T>(value)
+  const ignored = new Set<keyof T>(keysToIgnore)
+  const allKeys = new Set<keyof T>([
+    ...(Object.keys(ref.current) as (keyof T)[]),
+    ...(Object.keys(value) as (keyof T)[])
+  ])
+  let hasNonIgnoredChange = false
+  for (const key of allKeys) {
+    if (ignored.has(key)) continue
+    if (!Object.is(ref.current[key], value[key])) {
+      hasNonIgnoredChange = true
+      break
+    }
+  }
+  if (hasNonIgnoredChange) {
+    ref.current = value
+  }
+  return ref.current
+}
 
 const dataPlotModes: DataPlotMode[] = ['lines', 'steps', 'fit']
 const fitModels: FitModel[] = ['linear', 'polynomial', 'exponential', 'gaussian']
@@ -572,7 +595,27 @@ function App() {
   const templateInputRef = useRef<HTMLInputElement>(null)
   const workspaceBodyRef = useRef<HTMLDivElement>(null)
   const activeSheet = useMemo(() => getSheet(workbook, sheetName), [workbook, sheetName])
-  const figure = useMemo(() => buildPlotFigure(config, activeSheet, language), [config, activeSheet, language])
+  const stableConfig = useStableExceptKeys(config, tickFormattingKeys)
+  const figure = useMemo(
+    () => buildPlotFigure(config, activeSheet, language),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stableConfig, activeSheet, language]
+  )
+  const recomputeTicks = useMemo(
+    () => (xRange: [number, number], yRange: [number, number]) => computeAxisTickUpdates(
+      xRange,
+      yRange,
+      Number(config.x_exponent ?? 1),
+      Number(config.y_exponent ?? 1),
+      { step: config.x_tick_step, precision: config.x_tick_precision },
+      { step: config.y_tick_step, precision: config.y_tick_precision }
+    ),
+    [config.x_exponent, config.y_exponent, config.x_tick_step, config.y_tick_step, config.x_tick_precision, config.y_tick_precision]
+  )
+
+  useEffect(() => {
+    plotRef.current?.applyAxisFormatting()
+  }, [config.x_tick_step, config.y_tick_step, config.x_tick_precision, config.y_tick_precision])
 
   function resizeWorkspace(clientY: number) {
     const container = workspaceBodyRef.current
@@ -873,6 +916,10 @@ function App() {
               <TextInput label={t.yUnit} value={config.y_unit} onChange={(value) => patchConfig({ y_unit: value })} />
               <NumberInput label={t.xExp} value={config.x_exponent} onChange={(value) => patchConfig({ x_exponent: value ?? 0 })} />
               <NumberInput label={t.yExp} value={config.y_exponent} onChange={(value) => patchConfig({ y_exponent: value ?? 0 })} />
+              <NumberInput label={t.xTickStep} value={config.x_tick_step} placeholder="auto" onChange={(value) => patchConfig({ x_tick_step: value })} />
+              <NumberInput label={t.yTickStep} value={config.y_tick_step} placeholder="auto" onChange={(value) => patchConfig({ y_tick_step: value })} />
+              <NumberInput label={t.xTickPrecision} value={config.x_tick_precision} placeholder="auto" onChange={(value) => patchConfig({ x_tick_precision: value })} />
+              <NumberInput label={t.yTickPrecision} value={config.y_tick_precision} placeholder="auto" onChange={(value) => patchConfig({ y_tick_precision: value })} />
               <label className="field compact-field">
                 <span>{t.stats}</span>
                 <select value={config.stats_pos} onChange={(event) => patchConfig({ stats_pos: event.target.value as EditablePlotConfig['stats_pos'] })}>
@@ -949,6 +996,7 @@ function App() {
             <PlotPreview
               ref={plotRef}
               figure={figure}
+              recomputeTicks={recomputeTicks}
               exportLabels={{
                 title: t.pngPreview,
                 help: t.pngPreviewHelp,
